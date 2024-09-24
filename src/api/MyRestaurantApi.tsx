@@ -1,4 +1,4 @@
-import { Restaurant } from "@/types";
+import { Order, Restaurant } from "@/types";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useMutation, useQuery } from "react-query";
 import { toast } from "sonner";
@@ -11,17 +11,24 @@ export const useGetMyRestaurant = () => {
   const getMyRestaurantRequest = async (): Promise<Restaurant> => {
     const accessToken = await getAccessTokenSilently();
 
-    const response = await fetch(`${API_BASE_URL}/api/my/restaurant`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/my/restaurant`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
 
-    if (!response.ok) {
-      throw new Error("Failed to get restaurant");
+      if (!response.ok) {
+        console.error("Failed to fetch restaurant: ", response);
+        throw new Error("Failed to get restaurant");
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error("Error in getMyRestaurantRequest: ", error);
+      throw error;
     }
-    return response.json();
   };
 
   const { data: restaurant, isLoading } = useQuery(
@@ -40,18 +47,25 @@ export const useCreateMyRestaurant = () => {
   ): Promise<Restaurant[]> => {
     const accessToken = await getAccessTokenSilently();
 
-    const response = await fetch(`${API_BASE_URL}/api/my/restaurant`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: restaurantFormData,
-    });
-    if (!response.ok) {
-      throw new Error("Failed to create restaurant");
-    }
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/my/restaurant`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: restaurantFormData,
+      });
 
-    return response.json();
+      if (!response.ok) {
+        console.error("Failed to create restaurant: ", response);
+        throw new Error("Failed to create restaurant");
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error("Error in createMyRestaurantRequest: ", error);
+      throw error;
+    }
   };
 
   const {
@@ -66,6 +80,7 @@ export const useCreateMyRestaurant = () => {
   }
 
   if (error) {
+    console.error("Mutation error in useCreateMyRestaurant: ", error);
     toast.error("Unable to update restaurant");
   }
 
@@ -80,19 +95,25 @@ export const useUpdateMyRestaurant = () => {
   ): Promise<Restaurant> => {
     const accessToken = await getAccessTokenSilently();
 
-    const response = await fetch(`${API_BASE_URL}/api/my/restaurant`, {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: restaurantFormData,
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/my/restaurant`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: restaurantFormData,
+      });
 
-    if (!response) {
-      throw new Error("Failed to update restaurant");
+      if (!response.ok) {
+        console.error("Failed to update restaurant: ", response);
+        throw new Error("Failed to update restaurant");
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error("Error in updateRestaurantRequest: ", error);
+      throw error;
     }
-
-    return response.json();
   };
 
   const {
@@ -107,8 +128,102 @@ export const useUpdateMyRestaurant = () => {
   }
 
   if (error) {
+    console.error("Mutation error in useUpdateMyRestaurant: ", error);
     toast.error("Unable to update restaurant");
   }
 
   return { updateRestaurant, isLoading };
+};
+
+export const useGetMyRestaurantOrders = () => {
+  const { getAccessTokenSilently } = useAuth0();
+
+  const getMyRestaurantOrdersRequest = async (): Promise<Order[]> => {
+    const accessToken = await getAccessTokenSilently();
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/my/restaurant/order`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        console.error("Failed to fetch orders: ", response);
+        throw new Error("Failed to fetch orders");
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error("Error in getMyRestaurantOrdersRequest: ", error);
+      throw error;
+    }
+  };
+
+  const { data: orders, isLoading } = useQuery(
+    "fetchMyRestaurantOrders",
+    getMyRestaurantOrdersRequest
+  );
+
+  return { orders, isLoading };
+};
+
+type UpdateOrderStatusRequest = {
+  orderId: string;
+  status: string;
+};
+
+export const useUpdateMyRestaurantOrder = () => {
+  const { getAccessTokenSilently } = useAuth0();
+
+  const updateMyRestaurantOrder = async (
+    updateStatusOrderRequest: UpdateOrderStatusRequest
+  ) => {
+    const accessToken = await getAccessTokenSilently();
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/my/restaurant/order/${updateStatusOrderRequest.orderId}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: updateStatusOrderRequest.status }),
+        }
+      );
+
+      if (!response.ok) {
+        console.error("Failed to update order status: ", response);
+        throw new Error("Failed to update status");
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error("Error in updateMyRestaurantOrder: ", error);
+      throw error;
+    }
+  };
+
+  const {
+    mutateAsync: updateRestaurantStatus,
+    isLoading,
+    isError,
+    isSuccess,
+    reset,
+  } = useMutation(updateMyRestaurantOrder);
+
+  if (isSuccess) {
+    toast.success("Order updated");
+  }
+
+  if (isError) {
+    console.error("Mutation error in useUpdateMyRestaurantOrder: ", isError);
+    toast.error("Unable to update order");
+    reset();
+  }
+
+  return { updateRestaurantStatus, isLoading };
 };

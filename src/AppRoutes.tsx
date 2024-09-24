@@ -1,5 +1,5 @@
-import { Navigate, Routes, Route } from "react-router-dom";
-import Layout from "./layouts/layouts";
+import { Navigate, Route, Routes } from "react-router-dom";
+import Layout from "./layouts/layouts.tsx";
 import HomePage from "./pages/HomePage";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
 import UserProfilePage from "./pages/UserProfilePage";
